@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.dagger.hilt.android")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -57,4 +59,14 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // Lifecycle
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
+
+    // Hilt (Dependency Injection)
+    implementation("com.google.dagger:hilt-android:2.54")
+    implementation("com.google.firebase:protolite-well-known-types:18.0.1")
+    ksp("com.google.dagger:hilt-android-compiler:2.54")
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
 }
