@@ -15,7 +15,7 @@ data class Message(
 
     // Attachments (stored as JSON array of paths/URIs)
     val imageAttachments: String? = null, // JSON array: ["path1", "path2"],
-    val fileAttachments: String? = null // JSON array: [{"path":"path1","name":"file.pdf","type":"pdf"}]
+    val fileAttachments: String? = null ,// JSON array: [{"path":"path1","name":"file.pdf","type":"pdf"}]
 
     // Settings snapshot
     val temperature: Float? = null,
