@@ -2,7 +2,7 @@ package com.ai.sovereignai.domain.model
 
 enum class AIProvider(val displayName: String) {
     OPENAI("OpenAI"),
-    DEEPSEEK("DeepSeek"),
+    DEEPSEEK("Deepseek"),
     OPENROUTER("OpenRouter"),
     XAI("x.ai"),
     CUSTOM(

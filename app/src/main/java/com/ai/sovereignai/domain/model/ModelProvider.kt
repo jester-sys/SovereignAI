@@ -414,6 +414,56 @@ enum class OpenRouterModel(
         )
     }
 }
-fun ModelProvider.API.familyGroup(): String = when (provider) {
-    is ModelProvider.OPENAI -> "OpenAI"
+
+fun ModelProvider.API.familyGroup(): String  = when (provider){
+    AIProvider.OPENAI -> if (modelId.startsWith("o")) "OpenAI • o-series" else "OpenAI • GPT"
+    AIProvider.DEEPSEEK -> "DeepSeek"
+    AIProvider.XAI -> "xAI • Grok"
+    AIProvider.OPENROUTER -> when{
+        modelId.startsWith("anthropic/claude-") -> "Claude"
+        modelId.startsWith("google/gemini-") -> "Gemini"
+        modelId.startsWith("google/gemma") -> "Gemma"
+        modelId.startsWith("deepseek/") || modelId.startsWith("nex-agi/deepseek") -> "DeepSeek"
+        modelId.startsWith("openai/gpt-4o") -> "GPT-4o"
+        modelId.startsWith("meta-llama/llama") -> "Llama"
+        modelId.startsWith("qwen/") -> "Qwen"
+        modelId.startsWith("z-ai/glm") -> "GLM"
+       modelId.startsWith("baidu/ernie") -> "Ernie"
+        modelId.startsWith("moonshotai/kimi") -> "Kimi"
+        modelId.startsWith("xiaomi/mimo") -> "MiMo"
+        modelId.startsWith("meta-llama/") || modelId.startsWith("sao10k/") || modelId.contains("llama") -> "Llama"
+        modelId.startsWith("mistralai/") -> "Mistral"
+        modelId.startsWith("cohere/") -> "Cohere"
+        modelId.startsWith("nousresearch/") -> "Nous"
+        else -> "Other"
+    }
+    else -> provider.displayName
+}
+
+fun ModelProvider.API.familySortOrder():Int  = when (familyGroup()){
+    "OpenAI • GPT" -> 0
+    "OpenAI • o-series" -> 1
+    "xAI • Grok" -> 2
+    "Claude" -> 3
+    "Gemini" -> 4
+    "Gemma" -> 5
+    "DeepSeek" -> 6
+    "Qwen" -> 7
+    "GLM" -> 8
+    "MiMo" ->9
+    "Llama" -> 10
+    "Kimi" ->11
+    "Ernie" -> 12
+    "Mistral" -> 13
+    "Cohere" -> 14
+    "Nous" ->15
+    "Other" -> 16
+    else -> 99
+
+
+
+
+}
+
+
 
