@@ -1,5 +1,6 @@
 package com.ai.sovereignai.presentation.Chat.utils
 
+import android.content.Context
 import android.net.Uri
 import com.ai.sovereignai.domain.model.AIConfig
 import com.ai.sovereignai.domain.model.LocalModel
@@ -10,6 +11,9 @@ import com.ai.sovereignai.domain.model.ModelProvider
 import com.ai.sovereignai.domain.model.Persona
 import com.ai.sovereignai.domain.model.SystemPrompt
 import com.ai.sovereignai.domain.model.UserContext
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 
 data class ChatUiState(
     val conversation: List<MessageRole.Conversation> = emptyList(),
@@ -91,3 +95,10 @@ data class ErrorDetails(
     val assistantMessageId: String,
     val modelName: String
 )
+
+@HiltViewModel
+class ChatViewModel @Inject constructor(
+    @param:ApplicationContext private  val context: Context,
+    private  val conversationRepository: ConversationRepository,
+
+    )
