@@ -7,9 +7,14 @@ import androidx.room3.Update
 import androidx.room3.Dao
 import androidx.room3.OnConflictStrategy
 import com.ai.sovereignai.data.local.entity.ApiKeyEntity
+import com.ai.sovereignai.data.local.entity.BiographyChunkEntity
+import com.ai.sovereignai.data.local.entity.BiographyEntity
 import com.ai.sovereignai.data.local.entity.ConversationEntity
 import com.ai.sovereignai.data.local.entity.DocumentEntity
+import com.ai.sovereignai.data.local.entity.KnowledgeDocumentEntity
 import com.ai.sovereignai.data.local.entity.MessageEntity
+import com.ai.sovereignai.data.local.entity.PersonaEntity
+import com.ai.sovereignai.data.local.entity.SystemPromptEntity
 import com.ai.sovereignai.data.local.entity.UsageStatsEntity
 import com.ai.sovereignai.domain.model.MessageRole
 import kotlinx.coroutines.flow.Flow
@@ -143,5 +148,153 @@ interface UsageStatsDao{
 
 
 }
+@Dao
+interface SystemPromptDao{
+
+    @Query("SELECT * FROM system_prompts ORDER BY isDefault DESC, usageCount DESC, createdAt DESC")
+    fun getAllPrompts(): Flow<List<SystemPromptEntity>>
+
+    @Query("SELECT * FROM system_prompts ORDER BY isDefault DESC, usageCount DESC, createdAt DESC")
+    suspend fun getAllPromptsSync(): List<SystemPromptEntity>
+
+    @Query("SELECT * FROM system_prompts WHERE promptType = :type ORDER BY isDefault DESC, usageCount DESC, createdAt DESC")
+    fun getPromptsByType(type: String): Flow<List<SystemPromptEntity>>
+
+    @Query("SELECT * FROM system_prompts WHERE id = :id")
+    suspend fun getPromptById(id: String): SystemPromptEntity?
+
+    @Query("SELECT * FROM system_prompts WHERE isDefault = 1 AND promptType = 'api' LIMIT 1")
+    suspend fun getDefaultApiPrompt(): SystemPromptEntity?
+
+    @Query("SELECT * FROM system_prompts WHERE isDefault = 1 AND promptType = 'local' LIMIT 1")
+    suspend fun getDefaultLocalPrompt(): SystemPromptEntity?
+
+    @Query("SELECT * FROM system_prompts WHERE isDefault = 1 LIMIT 1")
+    suspend fun getDefaultPrompt(): SystemPromptEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPrompt(prompt: SystemPromptEntity)
+
+    @Update
+    suspend fun updatePrompt(prompt: SystemPromptEntity)
+
+    @Delete
+    suspend fun deletePrompt(prompt: SystemPromptEntity)
+
+    @Query("UPDATE system_prompts SET isDefault = 0 WHERE promptType = :type")
+    suspend fun clearDefaultsForType(type: String)
+
+    @Query("UPDATE system_prompts SET isDefault = 0")
+    suspend fun clearAllDefaults()
+
+    @Query("UPDATE system_prompts SET isDefault = 1 WHERE id = :id")
+    suspend fun  setAsDefault(id: String)
+
+    @Query("UPDATE system_prompts SET usageCount = usageCount + 1 WHERE id = :id")
+    suspend fun incrementUsageCount(id: String)
+
+}
+
+@Dao
+interface KnowledgeDocumentDao{
+    @Query("SELECT * FROM knowledge_documents ORDER BY createdAt DESC")
+    fun getAllDocuments(): Flow<List<KnowledgeDocumentEntity>>
+
+    @Query("SELECT * FROM knowledge_documents WHERE id = :id")
+    suspend fun getDocumentById(id: String): KnowledgeDocumentEntity?
+
+    @Query("SELECT * FROM knowledge_documents WHERE linkedPersonaIds LIKE '%\"' || :personaId || '\"%' ORDER BY createdAt DESC")
+    fun getDocumentsByPersonaId(personaId: String): Flow<List<KnowledgeDocumentEntity>>
+
+    @Query("SELECT * FROM knowledge_documents WHERE linkedPersonaIds = '[]' ORDER BY createdAt DESC")
+    fun getGlobalDocuments(): Flow<List<KnowledgeDocumentEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDocument(document: KnowledgeDocumentEntity)
+
+    @Update
+    suspend fun updateDocument(document: KnowledgeDocumentEntity)
+
+    @Delete
+    suspend fun deleteDocument(document: KnowledgeDocumentEntity)
+
+    @Query("DELETE FROM knowledge_documents WHERE id = :id")
+    suspend fun deleteById(id: String)
+
+}
+
+@Dao
+interface PersonaDao{
+    @Query("SELECT * FROM personas ORDER BY createdAt DESC")
+    fun getAllPersonas(): Flow<List<PersonaEntity>>
+
+    @Query("SELECT * FROM personas ORDER BY createdAt DESC")
+    suspend fun getAllPersonasSync(): List<PersonaEntity>
+
+    @Query("SELECT * FROM personas WHERE id = :id")
+    suspend fun getPersonaById(id: String): PersonaEntity?
+
+    @Query("SELECT * FROM personas WHERE id = :id")
+    fun observePersonaById(id: String): Flow<PersonaEntity?>
+
+    @Query("SELECT * FROM personas WHERE isForApi = :isForApi ORDER BY name ASC")
+    fun getPersonasByType(isForApi: Boolean): Flow<List<PersonaEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPersona(persona: PersonaEntity)
+
+    @Update
+    suspend fun updatePersona(persona: PersonaEntity)
+
+    @Delete
+    suspend fun deletePersona(persona: PersonaEntity)
+
+    @Query("DELETE FROM personas WHERE id = :id")
+    suspend fun deletePersonaById(id: String)
+
+    @Query("SELECT COUNT(*) FROM personas")
+    suspend fun getPersonaCount(): Int
+
+}
+
+@Dao
+interface BiographyDao{
+
+    @Query("SELECT * FROM user_biography WHERE id = 'default'")
+    fun getBiography(): Flow<BiographyEntity?>
+
+    @Query("SELECT * FROM user_biography WHERE id = 'default'")
+    suspend fun getBiographySync(): BiographyEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBiography(biography: BiographyEntity)
+
+    @Query("DELETE FROM user_biography")
+    suspend fun deleteBiography()
 
 
+}
+
+@Dao
+interface BiographyChunkDao{
+    @Query("SELECT * FROM biography_chunks WHERE biographyId = :biographyId ORDER BY createdAt ASC")
+    suspend fun getChunksByBiographyId(biographyId: String): List<BiographyChunkEntity>
+
+    @Query("SELECT * FROM biography_chunks WHERE biographyId = 'default'")
+    suspend fun  getAllChunks(): List<BiographyChunkEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertChunk(chunk: BiographyChunkEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertChunks(chunks: List<BiographyChunkEntity>)
+
+    @Query("DELETE FROM biography_chunks WHERE biographyId = :biographyId")
+    suspend fun deleteChunksByBiographyId(biographyId: String)
+
+    @Query("DELETE FROM biography_chunks")
+    suspend fun deleteAllChunks()
+
+
+
+}

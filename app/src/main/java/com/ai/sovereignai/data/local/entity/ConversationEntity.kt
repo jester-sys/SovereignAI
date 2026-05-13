@@ -347,7 +347,7 @@ data class PersonaEntity(
  * User-generated biography based on memory clusters
  */
 @Entity(tableName = "user_biography")
-data class UserBiographyEntity(
+data class BiographyEntity(
     @PrimaryKey
     val id: String,
 
