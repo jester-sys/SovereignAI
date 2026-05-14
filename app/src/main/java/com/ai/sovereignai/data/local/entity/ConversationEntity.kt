@@ -58,6 +58,7 @@ data class MessageEntity(
     val conversationId: String,
     val content: String,
 
+    val role: String,
     val createdAt: Long,
 
     val tokenCount: Int? = null,
