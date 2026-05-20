@@ -5,6 +5,7 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
+import com.ai.sovereignai.domain.model.MemoryEntry
 
 
 /**
@@ -44,6 +45,7 @@ data class MemoryEntity(
     @ColumnInfo(name = "message_id")
     val messageId: String,
 
+
     @ColumnInfo(name = "fact")
     val fact: String,
 
@@ -64,8 +66,27 @@ data class MemoryEntity(
 /**
  * Extension functions for conversion
  */
-fun MemoryEntity.toDomain(): MemoryEntity{
+fun MemoryEntity.toDomain(): MemoryEntry {
     return MemoryEntry(
+        id = id,
+        conversationId = conversationId,
+        messageId = messageId,
+        fact = fact,
+        createdAt = createdAt,
+        isArchived = isArchived,
+        personaId = personaId
+    )
+}
 
+fun MemoryEntry.toEntity(embedding: String? = null): MemoryEntity {
+    return MemoryEntity(
+        id = id,
+        conversationId = conversationId,
+        messageId = messageId,
+        fact = fact,
+        createdAt = createdAt,
+        isArchived = isArchived,
+        embedding = embedding,
+        personaId = personaId
     )
 }

@@ -53,7 +53,7 @@ data class MemoryDto(
     val created_at: Long,
     val persona_id: String? = null,
     val device_id: String? = null,
-    val syned_at: Long? = null
+    val synced_at: Long? = null
 )
 @Serializable
 data class PersonaDto(

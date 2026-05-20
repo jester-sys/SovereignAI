@@ -11,6 +11,7 @@ data class Message(
     val isError: Boolean = false,
     val errorMessage: String? = null,
     val isLiked: Boolean = false,
+    val swipeMessageId: String? = null,
     val swipeMessageText: String? = null,
 
     // Attachments (stored as JSON array of paths/URIs)
@@ -21,6 +22,7 @@ data class Message(
     val temperature: Float? = null,
     val topP: Float? = null,
     val deepEmpathy: Boolean = false,
+    val memoryEnabled: Boolean = true,
     val messageHistoryLimit: Int? = null,
     val systemPrompt: String? = null,
 
@@ -29,7 +31,7 @@ data class Message(
 
 )
 
-enum class MessageRole{
+enum class MessageRole {
     USER,
     ASSISTANT,
     SYSTEM;
@@ -43,6 +45,7 @@ enum class MessageRole{
                 "assistant" -> ASSISTANT
                 "system" -> SYSTEM
                 else -> USER
+            }
         }
     }
 }
@@ -70,4 +73,3 @@ enum class MessageRole{
 
     )
 
-}

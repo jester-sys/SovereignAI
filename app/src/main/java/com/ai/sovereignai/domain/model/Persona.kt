@@ -24,6 +24,7 @@ data class Persona(
     // ===== Prompts =====
     val deepEmpathyPrompt: String = AIConfig.DEFAULT_DEEP_EMPATHY_ANALYSIS_PROMPT,
     val deepEmpathyAnalysisPrompt: String = AIConfig.DEFAULT_DEEP_EMPATHY_ANALYSIS_PROMPT,
+    val memoryExtractionPrompt: String = AIConfig.DEFAULT_MEMORY_EXTRACTION_PROMPT,
     val contextInstructions: String = AIConfig.DEFAULT_CONTEXT_INSTRUCTIONS,
     val memoryInstructions: String = AIConfig.DEFAULT_MEMORY_INSTRUCTIONS,
     val ragInstructions: String = AIConfig.DEFAULT_RAG_INSTRUCTIONS,
@@ -35,13 +36,13 @@ data class Persona(
     val memoryTitle: String = "Your memories",
 
     // ===== RAG Configuration =====
-    val ragchunkSize:Int =152,
+    val ragChunkSize:Int =152,
     val ragChunkOverlap : Int = 64,
-    val ragchunkLimit: Int = 5,
+    val ragChunkLimit: Int = 5,
     val ragTitle: String = "Your library of texts",
 
     // ===== Model Preference =====
-    val perferredModelId: String? = null,
+    val preferredModelId: String? = null,
     val preferredProvider: String? = null,
 
     // ===== Document Links =====
@@ -92,7 +93,7 @@ data class Persona(
             memoryMinAgeDays = config.memoryMinAgeDays,
             memoryTitle = config.memoryTitle,
             ragTitle = config.memoryTitle,
-            ragchunkSize = config.ragChunkSize,
+            ragChunkLimit = config.ragChunkSize,
             ragChunkOverlap = config.ragChunkOverlap,
             createAt = System.currentTimeMillis(),
             updateAt = System.currentTimeMillis()
@@ -104,7 +105,7 @@ data class Persona(
         return AIConfig(
             systemPrompt = if (isForApi)  systemPrompt else AIConfig.DEFAULT_SYSTEM_PROMPT,
             localSystemPrompt = if (!isForApi) systemPrompt else AIConfig.DEFAULT_LOCAL_SYSTEM_PROMPT,
-            memoryExtractionPrompt = AIConfig.DEFAULT_MEMORY_EXTRACTION_PROMPT,
+            memoryExtractionPrompt = memoryExtractionPrompt,
             temperature =   temperature,
             topP = topP,
             maxTokens = maxTokens,
@@ -116,9 +117,9 @@ data class Persona(
             memoryTitle = memoryTitle,
             memoryInstructions = memoryInstructions,
             ragEnabled = ragEnabled,
-            ragChunkSize = ragchunkSize,
+            ragChunkSize = ragChunkSize,
             ragChunkOverlap = ragChunkOverlap,
-            ragChunkLimit = ragchunkLimit,
+            ragChunkLimit = ragChunkLimit,
             ragTitle = ragTitle,
             ragInstructions = ragInstructions,
             contextInstructions = contextInstructions,

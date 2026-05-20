@@ -81,7 +81,7 @@ data class MessageEntity(
     //Settings snapshot — flags at the moment of message generation
     val temperature: Float? = null,
     val topP: Float? = null,
-    val deepEmpathy: Boolean? = null,
+    val deepEmpathy: Boolean = false,
     val memoryEnabled: Boolean = true,
     val messageHistoryLimit: Int? = null,
     val systemPrompt: String? = null,
@@ -258,11 +258,11 @@ data class KnowledgeDocumentEntity(
     val name: String,
     val content: String,
 
-    val createAt: Long,
-    val updateAt: Long,
+    val createdAt: Long,
+    val updatedAt: Long,
 
     val sizeBytes: Int = 0,
-    val linkedPersonaId: String? = null,
+    val linkedPersonaIds: String = "[]",
 )
 
 /**
@@ -304,7 +304,6 @@ data class PersonaEntity(
     val deepEmpathyPrompt : String,
     val deepEmpathyAnalysisPrompt: String,
     val memoryExtractionPrompt: String,
-    val contextExtractionPrompt: String,
     val contextInstructions: String,
     val memoryInstructions: String,
     val ragInstructions: String,

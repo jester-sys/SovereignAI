@@ -71,4 +71,7 @@ dependencies {
     implementation("com.google.firebase:protolite-well-known-types:18.0.1")
     ksp("com.google.dagger:hilt-android-compiler:2.54")
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
+
+    // Gson (JSON parsing)
+    implementation("com.google.code.gson:gson:2.10.1")
 }
