@@ -30,7 +30,6 @@ interface ConversationDao {
     @Query("SELECT * FROM conversations WHERE id = :id")
     fun observeConversationById(id: String): Flow<ConversationEntity?>
 
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertConversation(conversation: ConversationEntity)
 
@@ -54,7 +53,7 @@ interface MessageDao{
     fun getAllMessages(): Flow<List<MessageEntity>>
 
     @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY createdAt ASC")
-    suspend fun getMessagesByConversation(conversationId: String): Flow<List<MessageEntity>>
+     fun getMessagesByConversation(conversationId: String): Flow<List<MessageEntity>>
 
     @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY createdAt ASC")
     suspend fun getMessagesByConversationSync(conversationId: String): List<MessageEntity>

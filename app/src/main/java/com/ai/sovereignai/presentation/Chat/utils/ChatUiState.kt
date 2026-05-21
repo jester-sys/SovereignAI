@@ -2,6 +2,7 @@ package com.ai.sovereignai.presentation.Chat.utils
 
 import android.content.Context
 import android.net.Uri
+import com.ai.sovereignai.data.repository.ConversationRepository
 import com.ai.sovereignai.domain.model.AIConfig
 import com.ai.sovereignai.domain.model.LocalModel
 import com.ai.sovereignai.domain.model.LocalModelInfo

@@ -73,7 +73,7 @@ fun Message.toEntity(): MessageEntity{
 
 // Conversation Mappers
 
-fun ConversationEntity.toDomain(message: List<Message> = emptyList()): Conversation {
+fun ConversationEntity.toDomain(messages: List<Message> = emptyList()): Conversation{
     return Conversation(
         id = id,
         title = title,
