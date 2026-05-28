@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.ai.sovereignai.data.repository.ConversationRepository
 import com.ai.sovereignai.domain.model.AIConfig
+import com.ai.sovereignai.domain.model.Conversation
 import com.ai.sovereignai.domain.model.LocalModel
 import com.ai.sovereignai.domain.model.LocalModelInfo
 import com.ai.sovereignai.domain.model.Message
@@ -17,9 +18,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 data class ChatUiState(
-    val conversation: List<MessageRole.Conversation> = emptyList(),
+    val conversation: List<Conversation> = emptyList(),
     val currentConversationId: String? = null,
-    val currentConversation: MessageRole.Conversation? = null,
+    val currentConversation: Conversation? = null,
     val messages: List<Message> = emptyList(),
     val localModels: Map<LocalModel, LocalModelInfo> = emptyMap(),
     val availableModels: List<ModelProvider> = emptyList(),

@@ -40,6 +40,7 @@ sealed class DownloadStatus {
     object Queued : DownloadStatus()
     data class Downloading(val progress: Int) : DownloadStatus()
     data class Error(val error: String) : DownloadStatus()
+    data class Failed(val error: String) : DownloadStatus()
 
 }
 /**

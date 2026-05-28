@@ -76,8 +76,8 @@ interface MessageDao{
     @Query("DELETE FROM messages WHERE conversationId = :conversationId")
     suspend fun deleteMessagesByConversation(conversationId: String)
 
-    @Query("SELECT  SUM(tokenCount) FROM messages WHERE conversationId = :conversationId")
-    suspend fun getConversationTokenByConversation(conversationId: String): Int?
+    @Query("SELECT SUM(tokenCount) FROM messages WHERE conversationId = :conversationId")
+    suspend fun getTotalTokensByConversation(conversationId: String): Int?
 
 }
 
