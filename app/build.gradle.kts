@@ -81,4 +81,8 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
+
+    // Security (Encrypted SharedPreferences)
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
 }
