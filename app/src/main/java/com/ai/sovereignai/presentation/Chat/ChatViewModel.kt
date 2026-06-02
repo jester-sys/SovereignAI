@@ -13,6 +13,7 @@ class ChatViewModel @Inject constructor(
     private  val  conversationRepository: ConversationRepository,
     private  val messageRepository : MessageRepository,
     private  val localModelRepository: LocalModelRepository,
-    private  val apiKeyRepository: ApiKeyRepository
+    private  val apiKeyRepository: ApiKeyRepository,
+    private  val aiConfigRepository: AiConfigRepository
 
     )
