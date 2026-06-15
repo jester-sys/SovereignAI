@@ -203,6 +203,10 @@ class SettingsManager  @Inject constructor(
 
         }
     }
+
+    val promptLanguage : Flow<String> = dataStore.data.map { preferences ->
+        preferences[PROMPT_LANGUAGE] ?: "en"
+    }
     // Prompt Language
     suspend fun  setPromptLanguage(language: String){
         dataStore.edit { preferences ->
