@@ -1,15 +1,16 @@
 package com.ai.sovereignai.data.local.dao
 
-import androidx.room3.Delete
-import androidx.room3.Insert
-import androidx.room3.Query
-import androidx.room3.Update
-import androidx.room3.Dao
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.Query
+import androidx.room.Update
 import androidx.room3.OnConflictStrategy
 import com.ai.sovereignai.data.local.entity.ApiKeyEntity
 import com.ai.sovereignai.data.local.entity.BiographyChunkEntity
 import com.ai.sovereignai.data.local.entity.BiographyEntity
 import com.ai.sovereignai.data.local.entity.ConversationEntity
+import com.ai.sovereignai.data.local.entity.DocumentChunkEntity
 import com.ai.sovereignai.data.local.entity.DocumentEntity
 import com.ai.sovereignai.data.local.entity.KnowledgeDocumentEntity
 import com.ai.sovereignai.data.local.entity.MessageEntity
@@ -104,6 +105,23 @@ interface DocumentDao{
     @Query("UPDATE documents SET isProcessed = :isProcessed, chunkCount = :chunkCount WHERE id = :id")
     suspend fun updateProcessingStatus(id: String, isProcessed: Boolean, chunkCount: Int)
 
+}
+@Dao
+interface DocumentChunkDao {
+    @Query("SELECT * FROM document_chunks WHERE documentId = :documentId ORDER BY chunkIndex ASC")
+    suspend fun getChunksByDocument(documentId: String): List<DocumentChunkEntity>
+
+    @Query("SELECT * FROM document_chunks ORDER BY documentId, chunkIndex ASC")
+    suspend fun getAllChunks(): List<DocumentChunkEntity>
+
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    suspend fun insertChunk(chunk: DocumentChunkEntity)
+
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    suspend fun insertChunks(chunks: List<DocumentChunkEntity>)
+
+    @Query("DELETE FROM document_chunks WHERE documentId = :documentId")
+    suspend fun deleteChunksByDocument(documentId: String)
 }
 
 @Dao
@@ -221,6 +239,10 @@ interface KnowledgeDocumentDao{
     suspend fun deleteById(id: String)
 
 }
+
+
+
+
 
 @Dao
 interface PersonaDao{

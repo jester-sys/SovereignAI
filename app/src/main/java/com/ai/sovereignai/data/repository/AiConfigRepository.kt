@@ -29,7 +29,7 @@ private val Context.aiConfigDataStore: DataStore<Preferences> by preferencesData
  * Repository for AI configuration and user context
  */
 @Singleton
-class AIConfigRepository @Inject constructor(
+class AiConfigRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val promptTranslationManager: PromptTranslationManager,
     private val settingsManager: SettingsManager
