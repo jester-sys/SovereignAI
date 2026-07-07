@@ -25,14 +25,16 @@ sealed class ModelProvider {
 
 }
 
+
+
 /**
  * Available Deepseek models
  */
-enum class Deepseek(
+enum class DeepseekModel(
     val modelId: String,
     val displayName: String,
     val description: String
-){
+) {
     DEEPSEEK_CHAT(
         modelId = "deepseek-chat",
         displayName = "DeepSeek Chat (V3.2)",
@@ -44,7 +46,7 @@ enum class Deepseek(
         description = "Thinking mode - deeper reasoning"
     );
 
-    fun toModelProvider(): ModelProvider.API{
+    fun toModelProvider(): ModelProvider.API {
         return ModelProvider.API(
             provider = AIProvider.DEEPSEEK,
             modelId = modelId,

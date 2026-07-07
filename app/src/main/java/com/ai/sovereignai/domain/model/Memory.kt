@@ -30,11 +30,11 @@ data class DialogueFocus(
 data class MemoryEntry(
     val id: String,
     val conversationId: String,
-    val messageId : String,
+    val messageId: String,
     val fact: String,
     val createdAt: Long = System.currentTimeMillis(),
     val isArchived: Boolean = false,
-    val personaId: String? = null
+    val personaId: String? = null  // ID persona, в рамках которой создано воспоминание
 ){
     companion object{
         /**

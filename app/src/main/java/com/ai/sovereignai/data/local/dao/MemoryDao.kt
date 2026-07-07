@@ -21,14 +21,14 @@ interface MemoryDao {
     /**
      * Get all memories for a conversation
      */
-    @Query("SELECT * FROM  memories  WHERE conversation_id = :conversationId AND is_archived  =0 ORDER BY created_at DESC")
-    fun getMemoriesForConversation(conversationId: String) : Flow<List<MessageEntity>>
+    @Query("SELECT * FROM memories WHERE conversation_id = :conversationId AND is_archived = 0 ORDER BY created_at DESC")
+    fun getMemoriesForConversation(conversationId: String): Flow<List<MemoryEntity>>
 
     /**
      * Get all memories across all conversations
      */
     @Query("SELECT * FROM memories WHERE is_archived =0  ORDER BY created_at  DESC")
-    fun getAllMemories() : Flow<List<MessageEntity>>
+    fun getAllMemories() : Flow<List<MemoryEntity>>
 
     /**
      * Get memories for a specific persona
@@ -110,6 +110,13 @@ interface MemoryDao {
      */
     @Query("DELETE FROM memories WHERE id IN (:ids)")
     suspend fun deleteMemoriesByIds(ids: List<String>)
+
+    /**
+     * Delete all memories for a conversation
+     */
+    @Query("DELETE FROM memories WHERE conversation_id = :conversationId")
+    suspend fun deleteMemoriesForConversation(conversationId: String)
+
 
     /**
      * Delete all archived memories

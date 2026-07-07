@@ -1,10 +1,13 @@
 package com.ai.sovereignai.presentation.Chat
 
 import android.content.Context
+import androidx.lifecycle.ViewModel
 import com.ai.sovereignai.data.preferences.SettingsManager
 import com.ai.sovereignai.data.repository.ApiKeyRepository
 import com.ai.sovereignai.data.repository.ConversationRepository
+import com.ai.sovereignai.data.repository.KnowledgeDocumentRepository
 import com.ai.sovereignai.data.repository.LocalModelRepository
+import com.ai.sovereignai.data.repository.MemoryRepository
 import com.ai.sovereignai.data.repository.MessageRepository
 import com.ai.sovereignai.data.repository.PersonaRepository
 import com.ai.sovereignai.data.repository.SystemPromptRepository
@@ -27,8 +30,12 @@ class ChatViewModel @Inject constructor(
     private val llamaService: LlamaService,
     private val keyboardSoundManager: KeyboardSoundManager,
     private  val memoryRepository : MemoryRepository,
-    private val knowledgeDocumentRepository : KnowledgeDocumentRepository
+    private val knowledgeDocumentRepository : KnowledgeDocumentRepository,
+    // New managers
+    private val conversationManager : ChatConversationManager,
+    private  val messageHandler : ChatMessageHandler,
+    private  val importExportManager : ChatImportExportManager
 
+    ) : ViewModel() {
 
-
-    )
+    }
