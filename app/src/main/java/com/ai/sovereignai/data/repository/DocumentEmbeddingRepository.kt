@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.compareTo
 import kotlin.text.toFloat
 
@@ -24,79 +25,71 @@ import kotlin.text.toFloat
  * Processing status for document embedding
  */
 
-sealed class    DocumentProcessingStatus {
-     object  Idle : DocumentProcessingStatus()
-    data class  Processing (
-        val documentId : String,
-        val documentName : String,
-        val progress : Int,
-        val currentStep : String
-
-    ) :DocumentProcessingStatus()
-
-    data class  Deleting(
-        val documentId : String,
-        val documentName : String,
-        val progress : Int
+sealed class DocumentProcessingStatus {
+    object Idle : DocumentProcessingStatus()
+    data class Processing(
+        val documentId: String,
+        val documentName: String,
+        val progress: Int, // 0-100
+        val currentStep: String
+    ) : DocumentProcessingStatus()
+    data class Deleting(
+        val documentId: String,
+        val documentName: String,
+        val progress: Int // 0-100
     ) : DocumentProcessingStatus()
     data class Completed(val documentId: String) : DocumentProcessingStatus()
     data class Failed(val documentId: String, val error: String) : DocumentProcessingStatus()
-
 }
 
 /**
  * Repository for managing document embeddings and chunks for RAG
  */
+@Singleton
 class DocumentEmbeddingRepository @Inject constructor(
     private val documentDao: DocumentDao,
     private val documentChunkDao: DocumentChunkDao,
-    private  val knowledgeDocumentDao: KnowledgeDocumentDao,
-    private val embeddingService : EmbeddingService,
-    private val gson : Gson
+    private val knowledgeDocumentDao: KnowledgeDocumentDao,
+    private val embeddingService: EmbeddingService,
+    private val gson: Gson
 ) {
 
-    private  val _processingStatus = MutableStateFlow<DocumentProcessingStatus>(
+    private val _processingStatus = MutableStateFlow<DocumentProcessingStatus>(
         DocumentProcessingStatus.Idle)
+    val processingStatus: StateFlow<DocumentProcessingStatus> = _processingStatus.asStateFlow()
 
-    val processingStatus : StateFlow<DocumentProcessingStatus> = _processingStatus.asStateFlow()
-
-
-    companion object{
-        private const val TAG =  "DocumentEmbeddingRepo"
-        private  const val  BATCH_SIZE = 5 // Process 5 chunks at a time for battery optimization
-
+    companion object {
+        private const val TAG = "DocumentEmbeddingRepo"
+        private const val BATCH_SIZE = 5 // Process 5 chunks at a time for battery optimization
     }
 
     /**
      * Process document: chunk text and generate embeddings
      */
-
-    suspend fun  processDocument(
+    suspend fun processDocument(
         documentId: String,
-        documentName : String,
-        content : String,
-        chunkSize : Int,
-        chunkOverlap : Int
-
-    ) : Result<Unit>  = withContext(Dispatchers.IO) {
-
+        documentName: String,
+        content: String,
+        chunkSize: Int,
+        chunkOverlap: Int
+    ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             Log.i(TAG, "Starting document processing: $documentName")
 
-            _processingStatus.value  = DocumentProcessingStatus.Processing(
-                documentId  = documentId,
+            _processingStatus.value = DocumentProcessingStatus.Processing(
+                documentId = documentId,
                 documentName = documentName,
-                progress = 0 ,
-                currentStep =   "Chunking document..."
+                progress = 0,
+                currentStep = "Chunking document..."
             )
 
             // 1. Split document into chunks
             val chunks = chunkText(content, chunkSize, chunkOverlap)
             Log.i(TAG, "Created ${chunks.size} chunks")
 
-            if(chunks.isEmpty()) {
+            if (chunks.isEmpty()) {
                 _processingStatus.value = DocumentProcessingStatus.Failed(
-                    documentId ,
+                    documentId,
                     "Document is empty or too short"
                 )
                 return@withContext Result.failure(Exception("Document is empty"))
@@ -108,36 +101,35 @@ class DocumentEmbeddingRepository @Inject constructor(
 
             chunks.forEachIndexed { index, chunkText ->
                 val batchIndex = index / BATCH_SIZE
-                val batchProgress = ((index + 1) *100) / totalChunks
+                val batchProgress = ((index + 1) * 100) / totalChunks
 
                 _processingStatus.value = DocumentProcessingStatus.Processing(
                     documentId = documentId,
                     documentName = documentName,
                     progress = batchProgress,
-                    currentStep =  "Embedding chunk ${index + 1}/$totalChunks..."
+                    currentStep = "Embedding chunk ${index + 1}/$totalChunks..."
                 )
 
                 // Generate embedding for this chunk
                 val embeddingResult = embeddingService.generateEmbedding(chunkText)
 
-                if(embeddingResult.isSuccess) {
+                if (embeddingResult.isSuccess) {
                     val embedding = embeddingResult.getOrNull()
-                    val embeddingJson  = if(embedding != null){
+                    val embeddingJson = if (embedding != null) {
                         gson.toJson(embedding.toList())
-
-                    }else null
+                    } else null
 
                     chunkEntities.add(
                         DocumentChunkEntity(
-                            id =   UUID.randomUUID().toString(),
-                            documentId =documentId,
-                            content  = chunkText,
-                        chunkIndex = index,
+                            id = UUID.randomUUID().toString(),
+                            documentId = documentId,
+                            content = chunkText,
+                            chunkIndex = index,
                             embedding = embeddingJson
                         )
                     )
                 } else {
-                    Log.w(DocumentEmbeddingRepository.Companion.TAG, "Failed to embed chunk $index: ${embeddingResult.exceptionOrNull()?.message}")
+                    Log.w(TAG, "Failed to embed chunk $index: ${embeddingResult.exceptionOrNull()?.message}")
                     // Still save chunk without embedding
                     chunkEntities.add(
                         DocumentChunkEntity(
@@ -150,20 +142,19 @@ class DocumentEmbeddingRepository @Inject constructor(
                     )
                 }
 
-
                 // Save batch to database periodically to avoid memory issues
-                if((index+1) % BATCH_SIZE==0 || index== chunks.size-1){
+                if ((index + 1) % BATCH_SIZE == 0 || index == chunks.size - 1) {
                     val batchToSave = chunkEntities.takeLast(
-                        minOf(DocumentEmbeddingRepository.Companion.BATCH_SIZE, chunkEntities.size - (batchIndex * BATCH_SIZE))
+                        minOf(BATCH_SIZE, chunkEntities.size - (batchIndex * BATCH_SIZE))
                     )
                     documentChunkDao.insertChunks(batchToSave)
                     Log.d(TAG, "Saved batch of ${batchToSave.size} chunks")
-
                 }
             }
 
-            val document  = documentDao.getDocumentById(documentId)
-            if(document !=null){
+            // 3. Update document status
+            val document = documentDao.getDocumentById(documentId)
+            if (document != null) {
                 documentDao.updateDocument(
                     document.copy(
                         isProcessed = true,
@@ -180,8 +171,7 @@ class DocumentEmbeddingRepository @Inject constructor(
             _processingStatus.value = DocumentProcessingStatus.Idle
 
             Result.success(Unit)
-
-        }catch (e : Exception){
+        } catch (e: Exception) {
             Log.e(TAG, "Error processing document", e)
             _processingStatus.value = DocumentProcessingStatus.Failed(
                 documentId,
@@ -190,7 +180,7 @@ class DocumentEmbeddingRepository @Inject constructor(
 
             // Reset to Idle after showing error
             kotlinx.coroutines.delay(3000)
-            _processingStatus.value =DocumentProcessingStatus.Idle
+            _processingStatus.value = DocumentProcessingStatus.Idle
 
             Result.failure(e)
         }
@@ -199,35 +189,34 @@ class DocumentEmbeddingRepository @Inject constructor(
     /**
      * Delete document chunks and embeddings
      */
-
     suspend fun deleteDocumentChunks(
         documentId: String,
         documentName: String
-    ): Result<Unit>  = withContext(Dispatchers.IO){
-
+    ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             Log.i(TAG, "Deleting chunks for document: $documentName")
 
-           _processingStatus.value = DocumentProcessingStatus.Deleting(
+            _processingStatus.value = DocumentProcessingStatus.Deleting(
                 documentId = documentId,
                 documentName = documentName,
                 progress = 50
             )
+
             documentChunkDao.deleteChunksByDocument(documentId)
 
-           _processingStatus.value = DocumentProcessingStatus.Deleting(
-               documentId = documentId,
-               documentName = documentName,
-               progress = 100
-           )
+            _processingStatus.value = DocumentProcessingStatus.Deleting(
+                documentId = documentId,
+                documentName = documentName,
+                progress = 100
+            )
+
             // Reset to idle after a short delay
             kotlinx.coroutines.delay(500)
             _processingStatus.value = DocumentProcessingStatus.Idle
 
-            Log.i(DocumentEmbeddingRepository.Companion.TAG, "Chunks deleted successfully")
+            Log.i(TAG, "Chunks deleted successfully")
             Result.success(Unit)
-
-        }  catch (e: Exception) {
+        } catch (e: Exception) {
             Log.e(TAG, "Error deleting chunks", e)
             _processingStatus.value = DocumentProcessingStatus.Failed(
                 documentId,
@@ -237,7 +226,6 @@ class DocumentEmbeddingRepository @Inject constructor(
         }
     }
 
-
     /**
      * Get chunks for a document
      */
@@ -246,6 +234,7 @@ class DocumentEmbeddingRepository @Inject constructor(
             documentChunkDao.getChunksByDocument(documentId)
         }
     }
+
     /**
      * Search similar chunks using embedding
      */
@@ -311,22 +300,119 @@ class DocumentEmbeddingRepository @Inject constructor(
         }
     }
 
+    /**
+     * Search similar chunks for a specific Persona
+     */
+    suspend fun searchSimilarChunksByPersona(
+        query: String,
+        personaId: String,
+        topK: Int = 5
+    ): List<Pair<DocumentChunkEntity, Float>> = withContext(Dispatchers.IO) {
+        try {
+            val queryEmbeddingResult = embeddingService.generateEmbedding(query)
+            if (queryEmbeddingResult.isFailure) return@withContext emptyList()
+            val queryEmbedding = queryEmbeddingResult.getOrNull() ?: return@withContext emptyList()
 
+            // Get documents linked to this persona
+            val personaDocuments = knowledgeDocumentDao.getDocumentsByPersonaId(personaId).first()
+            val personaDocumentIds = personaDocuments.map { it.id }.toSet()
 
+            // Get chunks only from persona documents
+            val personaChunks = documentChunkDao.getAllChunks()
+                .filter { it.documentId in personaDocumentIds && it.embedding != null }
 
+            if (personaChunks.isEmpty()) return@withContext emptyList()
 
-    private  fun chunkText(text : String , chunkSize : Int , overlap : Int) : List<String>{
+            val chunksWithEmbeddings = personaChunks.mapNotNull { chunk ->
+                try {
+                    val embeddingList = gson.fromJson(chunk.embedding, List::class.java) as List<Double>
+                    val embedding = embeddingList.map { it.toFloat() }.toFloatArray()
+                    chunk to embedding
+                } catch (e: Exception) {
+                    null
+                }
+            }
 
-        if(text.isEmpty()) return  emptyList()
+            val results = SemanticSearchUtil.findSimilar(
+                query = query,
+                queryEmbedding = queryEmbedding,
+                items = chunksWithEmbeddings,
+                getText = { it.first.content },
+                getEmbedding = { it.second },
+                k = topK
+            )
+
+            Log.d(TAG, "Found ${results.size} persona chunks")
+            results.map { it.item.first to it.score }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error searching persona chunks", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * Search similar chunks from global documents (not linked to any Persona)
+     */
+    suspend fun searchSimilarGlobalChunks(
+        query: String,
+        topK: Int = 5
+    ): List<Pair<DocumentChunkEntity, Float>> = withContext(Dispatchers.IO) {
+        try {
+            val queryEmbeddingResult = embeddingService.generateEmbedding(query)
+            if (queryEmbeddingResult.isFailure) return@withContext emptyList()
+            val queryEmbedding = queryEmbeddingResult.getOrNull() ?: return@withContext emptyList()
+
+            // Get global documents (not linked to any persona)
+            val globalDocuments = knowledgeDocumentDao.getGlobalDocuments().first()
+            val globalDocumentIds = globalDocuments.map { it.id }.toSet()
+
+            // Get chunks only from global documents
+            val globalChunks = documentChunkDao.getAllChunks()
+                .filter { it.documentId in globalDocumentIds && it.embedding != null }
+
+            if (globalChunks.isEmpty()) return@withContext emptyList()
+
+            val chunksWithEmbeddings = globalChunks.mapNotNull { chunk ->
+                try {
+                    val embeddingList = gson.fromJson(chunk.embedding, List::class.java) as List<Double>
+                    val embedding = embeddingList.map { it.toFloat() }.toFloatArray()
+                    chunk to embedding
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
+            val results = SemanticSearchUtil.findSimilar(
+                query = query,
+                queryEmbedding = queryEmbedding,
+                items = chunksWithEmbeddings,
+                getText = { it.first.content },
+                getEmbedding = { it.second },
+                k = topK
+            )
+
+            Log.d(TAG, "Found ${results.size} global chunks")
+            results.map { it.item.first to it.score }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error searching global chunks", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * Chunk text into overlapping segments
+     */
+    private fun chunkText(text: String, chunkSize: Int, overlap: Int): List<String> {
+        if (text.isEmpty()) return emptyList()
 
         val chunks = mutableListOf<String>()
-        var startIndex =  0;
+        var startIndex = 0
 
-        while(startIndex < text.length){
-            val endIndex = minOf(startIndex + chunkSize , text.length)
+        while (startIndex < text.length) {
+            val endIndex = minOf(startIndex + chunkSize, text.length)
             val chunk = text.substring(startIndex, endIndex).trim()
 
-            if(chunk.isNotEmpty()) {
+            if (chunk.isNotEmpty()) {
                 chunks.add(chunk)
             }
 
@@ -334,11 +420,12 @@ class DocumentEmbeddingRepository @Inject constructor(
             startIndex += (chunkSize - overlap)
 
             // Break if we've reached the end
-            if(endIndex >= text.length) break
-
+            if (endIndex >= text.length) break
         }
-        return  chunks
+
+        return chunks
     }
+
     /**
      * Reset processing status
      */
@@ -351,7 +438,6 @@ class DocumentEmbeddingRepository @Inject constructor(
      * Use this when switching embedding models
      * @param onProgress callback with (current, total, percentage) progress
      */
-
     suspend fun recalculateAllEmbeddings(
         onProgress: (current: Int, total: Int, percentage: Float) -> Unit = { _, _, _ -> }
     ): Result<Int> = withContext(Dispatchers.IO) {
@@ -402,7 +488,6 @@ class DocumentEmbeddingRepository @Inject constructor(
         }
     }
 
-
     /**
      * Get all document chunks (for syncing)
      */
@@ -423,8 +508,4 @@ class DocumentEmbeddingRepository @Inject constructor(
     suspend fun upsertChunks(chunks: List<DocumentChunkEntity>): Unit = withContext(Dispatchers.IO) {
         documentChunkDao.insertChunks(chunks)
     }
-
-
-
-
 }

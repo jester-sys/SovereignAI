@@ -1,0 +1,362 @@
+package com.ai.sovereignai.presentation.Chat
+
+import android.util.Log
+import com.ai.sovereignai.data.repository.ConversationRepository
+import com.ai.sovereignai.data.repository.MessageRepository
+import com.ai.sovereignai.domain.model.AIProvider
+import com.ai.sovereignai.domain.model.Conversation
+import com.ai.sovereignai.domain.model.DeepseekModel
+import com.ai.sovereignai.domain.model.Message
+import com.ai.sovereignai.domain.model.MessageRole
+import com.ai.sovereignai.domain.model.ModelProvider
+import com.ai.sovereignai.domain.model.OpenAIModel
+import com.ai.sovereignai.domain.model.OpenRouterModel
+import com.ai.sovereignai.domain.model.XAIModel
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
+import javax.inject.Inject
+
+/**
+ * Handles chat import/export functionality
+ */
+class ChatImportExportManager @Inject constructor(
+    private val conversationRepository: ConversationRepository,
+    private val messageRepository: MessageRepository
+) {
+
+    /**
+     * Export chat to markdown text (legacy, without progress)
+     */
+    fun exportChat(
+        conversation: Conversation,
+        messages: List<Message>,
+        filterByLikes: Boolean = false
+    ): String {
+        if (messages.isEmpty()) {
+            return ""
+        }
+
+        val filteredMessages = if (filterByLikes) {
+            messages.filter { it.isLiked }
+        } else {
+            messages
+        }
+
+        if (filteredMessages.isEmpty() && filterByLikes) {
+            return "No liked messages to export.\n\nTip: Like messages by clicking the ❤️ icon in the message menu."
+        }
+
+        val exportBuilder = StringBuilder()
+        exportBuilder.appendLine("# Chat Export: ${conversation.title}")
+        exportBuilder.appendLine()
+        exportBuilder.appendLine("**Date:** ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}")
+        exportBuilder.appendLine("**Model:** ${conversation.model} (${conversation.provider})")
+        if (filterByLikes) {
+            exportBuilder.appendLine("**Filter:** ❤️ Liked messages only (${filteredMessages.size} messages)")
+        } else {
+            exportBuilder.appendLine("**Total messages:** ${filteredMessages.size}")
+        }
+        exportBuilder.appendLine()
+        exportBuilder.appendLine("---")
+        exportBuilder.appendLine()
+
+        filteredMessages.forEach { message ->
+            val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+                .format(Date(message.createdAt))
+            val role = when (message.role) {
+                MessageRole.USER -> "## 👤 User"
+                MessageRole.ASSISTANT -> "## 🤖 Assistant"
+                MessageRole.SYSTEM -> "## ⚙️ System"
+            }
+            val likeIndicator = if (message.isLiked) " ❤️" else ""
+
+            exportBuilder.appendLine("$role$likeIndicator")
+            exportBuilder.appendLine("*$timestamp*")
+            exportBuilder.appendLine()
+            exportBuilder.appendLine(message.content)
+            exportBuilder.appendLine()
+            exportBuilder.appendLine("---")
+            exportBuilder.appendLine()
+        }
+
+        return exportBuilder.toString()
+    }
+
+    /**
+     * Export chat to markdown text with progress callback (suspend version)
+     * Highly optimized for HUGE chats - aggressive yielding every 25 messages
+     */
+    suspend fun exportChatWithProgress(
+        conversation: Conversation,
+        messages: List<Message>,
+        filterByLikes: Boolean = false,
+        onProgress: (Float, String) -> Unit = { _, _ -> }
+    ): String {
+        if (messages.isEmpty()) {
+            return ""
+        }
+
+        val filteredMessages = if (filterByLikes) {
+            messages.filter { it.isLiked }
+        } else {
+            messages
+        }
+
+        if (filteredMessages.isEmpty()) {
+            return ""
+        }
+
+        val totalMessages = filteredMessages.size
+
+        // Pre-allocate StringBuilder capacity to avoid re-allocations
+        val estimatedSize = totalMessages * 200
+        val exportBuilder = StringBuilder(estimatedSize)
+
+        // Build header
+        exportBuilder.appendLine("# Chat Export: ${conversation.title}")
+        exportBuilder.appendLine()
+        exportBuilder.appendLine("**Date:** ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}")
+        exportBuilder.appendLine("**Model:** ${conversation.model} (${conversation.provider})")
+        if (filterByLikes) {
+            exportBuilder.appendLine("**Filter:** ❤️ Liked messages only ($totalMessages messages)")
+        } else {
+            exportBuilder.appendLine("**Total messages:** $totalMessages")
+        }
+        exportBuilder.appendLine()
+        exportBuilder.appendLine("---")
+        exportBuilder.appendLine()
+
+        // AGGRESSIVE: Process in very small chunks (25 messages) with yields
+        // This ensures UI stays responsive even for 10,000+ message chats
+        val chunkSize = 25
+
+        filteredMessages.chunked(chunkSize).forEach { chunk ->
+            // Process this small chunk
+            chunk.forEach { message ->
+                val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+                    .format(Date(message.createdAt))
+                val role = when (message.role) {
+                    MessageRole.USER -> "## 👤 User"
+                    MessageRole.ASSISTANT -> "## 🤖 Assistant"
+                    MessageRole.SYSTEM -> "## ⚙️ System"
+                }
+                val likeIndicator = if (message.isLiked) " ❤️" else ""
+
+                exportBuilder.appendLine("$role$likeIndicator")
+                exportBuilder.appendLine("*$timestamp*")
+                exportBuilder.appendLine()
+                exportBuilder.appendLine(message.content)
+                exportBuilder.appendLine()
+                exportBuilder.appendLine("---")
+                exportBuilder.appendLine()
+            }
+
+            // CRITICAL: Yield + small delay for maximum responsiveness
+            kotlinx.coroutines.yield()
+            delay(1) // 1ms delay ensures GC and UI get time
+        }
+
+        return exportBuilder.toString()
+    }
+
+    /**
+     * Import chat from markdown text
+     * Returns conversation ID on success, null on failure
+     */
+    suspend fun importChat(chatText: String): Pair<String?, String?> {
+        try {
+            val lines = chatText.lines()
+
+            // Parse title (first line starting with "# Chat Export:")
+            val titleLine = lines.firstOrNull { it.startsWith("# Chat Export:") }
+            val title = titleLine?.removePrefix("# Chat Export:")?.trim() ?: "Imported Chat"
+
+            // Parse model and provider
+            val modelLine = lines.firstOrNull { it.startsWith("**Model:**") }
+            var provider: ModelProvider = OpenAIModel.GPT_4O.toModelProvider()
+            var modelName = "gpt-4o"
+
+            if (modelLine != null) {
+                val modelPart = modelLine.removePrefix("**Model:**").trim()
+                // Format: "model-name (provider)"
+                val regex = """(.+?)\s*\((.+?)\)""".toRegex()
+                val match = regex.find(modelPart)
+                if (match != null) {
+                    modelName = match.groupValues[1].trim()
+                    val providerName = match.groupValues[2].trim()
+
+                    // Try to match provider
+                    provider = when {
+                        providerName.contains("OpenAI", ignoreCase = true) -> {
+                            // Try to find matching OpenAI model, fallback to GPT_4O
+                            OpenAIModel.entries.find { it.modelId == modelName || it.displayName == modelName }
+                                ?.toModelProvider() ?: OpenAIModel.GPT_4O.toModelProvider()
+                        }
+                        providerName.contains("Deepseek", ignoreCase = true) -> {
+                            // Try to find matching Deepseek model, fallback to DEEPSEEK_CHAT
+                            DeepseekModel.entries.find { it.modelId == modelName || it.displayName == modelName }
+                                ?.toModelProvider() ?: DeepseekModel.DEEPSEEK_CHAT.toModelProvider()
+                        }
+                        providerName.contains("OpenRouter", ignoreCase = true) -> {
+                            // Try to find matching OpenRouter model, fallback to CLAUDE_SONNET_4_5
+                            OpenRouterModel.entries.find { it.modelId == modelName || it.displayName == modelName }
+                                ?.toModelProvider() ?: OpenRouterModel.CLAUDE_SONNET_4_5.toModelProvider()
+                        }
+                        providerName.contains("xAI", ignoreCase = true) || providerName.contains("Grok", ignoreCase = true) -> {
+                            // Try to find matching xAI model, fallback to GROK_4_1_FAST_REASONING
+                            XAIModel.entries.find { it.modelId == modelName || it.displayName == modelName }
+                                ?.toModelProvider() ?: XAIModel.GROK_4_1_FAST_REASONING.toModelProvider()
+                        }
+                        else -> OpenAIModel.GPT_4O.toModelProvider()
+                    }
+                }
+            }
+
+            // Parse messages
+            val messages = parseMessages(lines)
+
+            if (messages.isEmpty()) {
+                return null to "No messages found in the imported text"
+            }
+
+            // Get provider name correctly
+            val providerName = when (provider) {
+                is ModelProvider.Local -> "local"
+                is ModelProvider.API -> {
+                    when (provider.provider) {
+                       AIProvider.OPENAI -> "OpenAI"
+                        AIProvider.DEEPSEEK -> "Deepseek"
+                       AIProvider.OPENROUTER -> "OpenRouter"
+                       AIProvider.XAI -> "x.ai (Grok)"
+                     AIProvider.CUSTOM -> "Custom"
+                    }
+                }
+            }
+
+            // Create conversation and get ID
+            val conversationId = conversationRepository.createConversation(
+                title = title,
+                systemPrompt = "", // Imported chats use default system prompt
+                model = modelName,
+                provider = providerName,
+                systemPromptId = null
+            )
+
+            // Insert messages with correct conversation ID
+            messages.forEach { message ->
+                messageRepository.addMessage(message.copy(conversationId = conversationId))
+            }
+
+            Log.d("ChatImportExportManager", "Imported chat: $conversationId, ${messages.size} messages")
+
+            return conversationId to null
+        } catch (e: Exception) {
+            Log.e("ChatImportExportManager", "Error importing chat", e)
+            return null to "Error parsing chat: ${e.message}"
+        }
+    }
+
+    /**
+     * Parse messages from imported text lines
+     */
+    private fun parseMessages(lines: List<String>): List<Message> {
+        val messages = mutableListOf<Message>()
+        var currentRole: MessageRole? = null
+        var currentContent = StringBuilder()
+        var currentTimestamp = System.currentTimeMillis()
+        var isLiked = false
+
+        for (line in lines) {
+            when {
+                line.startsWith("## 👤 User") -> {
+                    // Save previous message
+                    if (currentRole != null && currentContent.isNotEmpty()) {
+                        messages.add(
+                            Message(
+                                id = UUID.randomUUID().toString(),
+                                conversationId = "", // Will be set later
+                                role = currentRole,
+                                content = currentContent.toString().trim(),
+                                createdAt = currentTimestamp,
+                                isLiked = isLiked
+                            )
+                        )
+                    }
+                    currentRole = MessageRole.USER
+                    currentContent = StringBuilder()
+                    isLiked = line.contains("❤️")
+                }
+                line.startsWith("## 🤖 Assistant") -> {
+                    // Save previous message
+                    if (currentRole != null && currentContent.isNotEmpty()) {
+                        messages.add(
+                            Message(
+                                id = UUID.randomUUID().toString(),
+                                conversationId = "", // Will be set later
+                                role = currentRole,
+                                content = currentContent.toString().trim(),
+                                createdAt = currentTimestamp,
+                                isLiked = isLiked
+                            )
+                        )
+                    }
+                    currentRole = MessageRole.ASSISTANT
+                    currentContent = StringBuilder()
+                    isLiked = line.contains("❤️")
+                }
+                line.startsWith("## ⚙️ System") -> {
+                    // Save previous message
+                    if (currentRole != null && currentContent.isNotEmpty()) {
+                        messages.add(
+                            Message(
+                                id = UUID.randomUUID().toString(),
+                                conversationId = "", // Will be set later
+                                role = currentRole,
+                                content = currentContent.toString().trim(),
+                                createdAt = currentTimestamp,
+                                isLiked = isLiked
+                            )
+                        )
+                    }
+                    currentRole = MessageRole.SYSTEM
+                    currentContent = StringBuilder()
+                    isLiked = line.contains("❤️")
+                }
+                line.startsWith("*") && line.endsWith("*") -> {
+                    // Timestamp line - ignore
+                }
+                line == "---" || line.isBlank() -> {
+                    // Separator or blank - ignore
+                }
+                else -> {
+                    // Content line
+                    if (currentRole != null) {
+                        if (currentContent.isNotEmpty()) {
+                            currentContent.append("\n")
+                        }
+                        currentContent.append(line)
+                    }
+                }
+            }
+        }
+
+        // Save last message
+        if (currentRole != null && currentContent.isNotEmpty()) {
+            messages.add(
+                Message(
+                    id = UUID.randomUUID().toString(),
+                    conversationId = "", // Will be set later
+                    role = currentRole,
+                    content = currentContent.toString().trim(),
+                    createdAt = currentTimestamp,
+                    isLiked = isLiked
+                )
+            )
+        }
+
+        return messages
+    }
+}

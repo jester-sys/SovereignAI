@@ -160,7 +160,7 @@ class MessageRepository @Inject constructor(
      * @param pairLimit Number of pairs to retrieve (each pair = user + assistant message)
      * @return List of messages (user-assistant pairs), sorted chronologically
      */
-    suspend fun getlastMessagePairs(conversationId: String,pairLimit: Int): List<Message> {
+    suspend fun getLastMessagePairs(conversationId: String,pairLimit: Int): List<Message> {
         // Get all messages for this conversation, sorted by creation time
         val allMessages = messageDao.getMessagesByConversationSync(conversationId)
             .map { it.toDomain() }

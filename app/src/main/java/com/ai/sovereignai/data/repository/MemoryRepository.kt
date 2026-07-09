@@ -166,7 +166,7 @@ class MemoryRepository @Inject constructor(
      * Insert new memory with pre-computed embedding
      */
 
-    suspend fun  insetMemory(memory : MemoryEntry) {
+    suspend fun insertMemory(memory: MemoryEntry) {
         // Generate embedding for the memory fact
         val embeddingResult = embeddingService.generateEmbedding(memory.fact)
         val embeddingString = if (embeddingResult.isSuccess) {
@@ -174,6 +174,7 @@ class MemoryRepository @Inject constructor(
         } else {
             null
         }
+
         // Save memory with embedding
         memoryDao.insertMemory(memory.toEntity(embedding = embeddingString))
     }
@@ -295,7 +296,7 @@ class MemoryRepository @Inject constructor(
      * @param minAgeDays Minimum age in days for memories to be retrieved
      * @return List of most relevant memories
      */
-    suspend fun findSimilarMemories(query: String, limit: Int = 5, minAgeDays: Int = 0): List<MemoryEntry> {
+    suspend fun findSimilarGlobalMemories(query: String, limit: Int = 5, minAgeDays: Int = 0): List<MemoryEntry> {
         try {
             // Get all memory entities (with embeddings)
             val allMemoryEntities = memoryDao.getAllMemories().first()

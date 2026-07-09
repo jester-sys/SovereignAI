@@ -5,8 +5,8 @@ data class Message(
     val conversationId: String,
     val role: MessageRole,
     val content: String,
-    val createAt: Long,
-    val tokenCount:Int? = null,
+    val createdAt: Long,
+    val tokenCount: Int? = null,
     val model: String? = null,
     val isError: Boolean = false,
     val errorMessage: String? = null,
@@ -15,8 +15,8 @@ data class Message(
     val swipeMessageText: String? = null,
 
     // Attachments (stored as JSON array of paths/URIs)
-    val imageAttachments: String? = null, // JSON array: ["path1", "path2"],
-    val fileAttachments: String? = null ,// JSON array: [{"path":"path1","name":"file.pdf","type":"pdf"}]
+    val imageAttachments: String? = null, // JSON array: ["path1", "path2"]
+    val fileAttachments: String? = null, // JSON array: [{"path":"path1","name":"file.pdf","type":"pdf"}]
 
     // Settings snapshot
     val temperature: Float? = null,
@@ -28,7 +28,6 @@ data class Message(
 
     // Request logs
     val requestLogs: String? = null
-
 )
 
 enum class MessageRole {
@@ -49,6 +48,7 @@ enum class MessageRole {
         }
     }
 }
+
     /**
      * Conversation with messages
      */
