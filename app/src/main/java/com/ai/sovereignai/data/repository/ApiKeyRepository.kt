@@ -98,9 +98,8 @@ class ApiKeyRepository @Inject constructor(
         return _apiKeys.value[provider]
     }
 
-    fun hashApiKey(provider: AIProvider) : Boolean{
-
-        return  _apiKeys.value.containsKey(provider)
+    fun hasApiKey(provider: AIProvider): Boolean {
+        return _apiKeys.value.containsKey(provider)
     }
 
     fun getDisplayKey(provider: AIProvider): String? {
